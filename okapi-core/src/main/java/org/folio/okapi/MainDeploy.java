@@ -18,10 +18,13 @@ import io.vertx.core.file.FileSystemOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.spi.cluster.hazelcast.ConfigUtil;
 import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+import io.vertx.tracing.zipkin.HttpSenderOptions;
+import io.vertx.tracing.zipkin.ZipkinTracingOptions;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 import org.apache.logging.log4j.Logger;
 import org.folio.okapi.common.Messages;
 import org.folio.okapi.common.MetricsUtil;
@@ -43,6 +46,23 @@ public class MainDeploy {
 
   public MainDeploy() {
     this.conf = new JsonObject();
+    boolean zipkinEnabled = false;
+    String zipkinURL = null;
+    try {
+      zipkinEnabled = Boolean
+          .parseBoolean(System.getenv("ZIPKIN_TRACING_ENABLED"));
+      zipkinURL = System.getenv("ZIPKIN_API_URL");
+    } catch (Exception exception) {
+      logger.warn("Tracing not configured, add ZIPKIN_TRACING_ENABLED & ZIPKIN_API_URL to configure");
+    }
+    if (zipkinEnabled && Objects.nonNull(zipkinURL)) {
+      vopt.setTracingOptions(
+          new ZipkinTracingOptions()
+              .setSenderOptions(new HttpSenderOptions()
+                  .setSenderEndpoint(zipkinURL))
+              .setServiceName("OKAPI")
+      );
+    }
   }
 
   public MainDeploy(JsonObject conf) {
